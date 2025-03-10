@@ -7,7 +7,7 @@ The code is configured to be build using `colcon`. Run
 
     colcon build
 
-in the `ros2_ws` folder.
+in the `root` folder.
 
 ### Running
 Use 
@@ -15,7 +15,7 @@ Use
     . install/setup.bash
     ros2 launch environment simulation.launch.py
 
-in the `ros2_ws` folder to run the code.
+in the `root` folder to run the code.
 Configuration is done using the `environment.yaml` in the `config`folder of the `environment` package.
 For deciding which robot should be used during simulation comment the other line in the `simulation.launch.py` file as shown below:
 
