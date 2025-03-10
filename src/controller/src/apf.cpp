@@ -24,7 +24,8 @@ static inline int sign(double a) {
 
 APFController::APFController() : Node("apf_controller"), obstacles(), receivedObstacles(false), grad_val(100.0), reached_goal(false),
             minima_location(), minima_override(false) {
-    // Initialize the transform broadcaster
+
+    //initialize rclcpp objects
     obs_subscription = this->create_subscription<obstacle::msg::ObstacleArray>("obstacles", 1,
             std::bind(&APFController::obstacle_callback, this, std::placeholders::_1));
     
@@ -38,6 +39,7 @@ APFController::APFController() : Node("apf_controller"), obstacles(), receivedOb
 
     timer = this->create_wall_timer(LOOP_TIME, std::bind(&APFController::control_loop, this));
     
+    //declare/get parameter
     this->declare_parameter("ignore_heading", false);
     this->get_parameter("ignore_heading", ignore_heading);
     this->declare_parameter("max_velocity", 5.0);
@@ -61,6 +63,7 @@ APFController::APFController() : Node("apf_controller"), obstacles(), receivedOb
 }    
 
 void APFController::obstacle_callback(const obstacle::msg::ObstacleArray &msg) {
+    //save obstacles from msg in obstacles std::vector
     for(int i = 0; i < msg.obstacles.size(); i++) {
         Obstacle obs = Obstacle(msg.obstacles[i].length, msg.obstacles[i].width, msg.obstacles[i].shape,
                     Eigen::Vector2d(msg.obstacles[i].origin.x, msg.obstacles[i].origin.y));
@@ -68,10 +71,12 @@ void APFController::obstacle_callback(const obstacle::msg::ObstacleArray &msg) {
     }
     if(receivedObstacles == false || position.norm() < 0.1) {
         receivedObstacles = true;
+        start = rclcpp::Clock().now(); //start time measurement
     }
 }
 
 void APFController::pose_callback(const geometry_msgs::msg::Pose &msg) {
+    //save robot pose
     position = Eigen::Vector2d(msg.position.x, msg.position.y);
     tf2::Quaternion q(
         msg.orientation.x,
@@ -96,6 +101,7 @@ void APFController::getMinDistance(Obstacle &obs, Eigen::Vector2d& pos, Eigen::V
 }
 
 void APFController::computeNextForce(Eigen::Vector2d& pos, Eigen::Vector2d& force, Eigen::Vector2d& attract_force, Eigen::Vector2d& reflect_force) {
+    //attraction force computation
     if(!seek_source)
         attract_force = goal_pos-pos;
     else {
@@ -107,6 +113,7 @@ void APFController::computeNextForce(Eigen::Vector2d& pos, Eigen::Vector2d& forc
         attract_force *= 12.0;   
     }
 
+    //reflection force computation, done per obstacle
     reflect_force << 0.0, 0.0;
     for(auto & iobs : obstacles) {
         Eigen::Vector2d distance;
@@ -120,6 +127,7 @@ void APFController::computeNextForce(Eigen::Vector2d& pos, Eigen::Vector2d& forc
         
     }
 
+    //compute combined force, cap it and avoid minima
     force = reflect_force + attract_force;
     if(force.norm() > max_vel)
         force = force.normalized() * max_vel;
@@ -135,7 +143,9 @@ void APFController::computeNextForce(Eigen::Vector2d& pos, Eigen::Vector2d& forc
 }
 
 void APFController::avoidMinima(Eigen::Vector2d& force, Eigen::Vector2d& attract_force) {
+
     rclcpp::Time now = rclcpp::Clock().now();
+    //override if robot was stuck for longer than MINIMA_WAIT_TIME_S
     if(minima_override) {
         if((now-minima_reached_at).seconds() < MINIMA_OVERRIDE_TIME_S + MINIMA_WAIT_TIME_S)
             force = force_override;
@@ -143,6 +153,7 @@ void APFController::avoidMinima(Eigen::Vector2d& force, Eigen::Vector2d& attract
             minima_override = false;
     }
     else if(force.norm() < 0.3) {
+        //add vector perpendicular to the attracting force
         Eigen::Vector3d tmp_cross;
         tmp_cross << attract_force[0], attract_force[1], 0.0;
         tmp_cross = tmp_cross.cross(Eigen::Vector3d::UnitZ());
@@ -150,11 +161,13 @@ void APFController::avoidMinima(Eigen::Vector2d& force, Eigen::Vector2d& attract
         add << tmp_cross[0], tmp_cross[1];
         force += add;
 
+        //safe position and start timer
         if((minima_location-position).norm() > 0.1) {
             minima_reached_at = now;
             minima_location = position;
         }
         else {
+            //start override
             if((now-minima_reached_at).seconds() > MINIMA_WAIT_TIME_S) {
                 force = attract_force;
                 minima_override = true;
@@ -165,6 +178,7 @@ void APFController::avoidMinima(Eigen::Vector2d& force, Eigen::Vector2d& attract
 }
 
 void APFController::control_loop() {
+    //interrupt if not all data was received
     if(!receivedObstacles || position.norm() < 0.1)
         return;
 
@@ -175,6 +189,7 @@ void APFController::control_loop() {
     msg.linear.x = force[0];
     msg.linear.y = force[1];
 
+    //heading control using asymetric force comparison
     visualization_msgs::msg::MarkerArray forces;
     if(!ignore_heading && obstacles.size() > 0) {
         Eigen::Vector2d front = position + Eigen::Vector2d(cos(heading), sin(heading)*robot_length/2);
@@ -194,6 +209,7 @@ void APFController::control_loop() {
 
     }
 
+    //check if goal was reached
     checkGoal(msg, attract_force);
     vel_publisher->publish(msg);
 
@@ -221,11 +237,15 @@ void APFController::control_loop() {
 void APFController::checkGoal(geometry_msgs::msg::Twist& msg, Eigen::Vector2d& attract_force) {
     if(!seek_source) {
         if((goal_pos-position).norm() < 0.15) {
-            if(!reached_goal)
+            //robot reached goal
+            if(!reached_goal) {
                 RCLCPP_INFO(this->get_logger(), "Reached goal! Current position: %.2f, %.2f\n", position[0], position[1]);
+                RCLCPP_INFO(this->get_logger(), "Needed time: %.2f\n", (rclcpp::Clock().now()-start).seconds());
+            }
             reached_goal = true;
         }
         else if((goal_pos-position).norm() < 0.5) {
+            //robot near goal
             msg.linear.x = 0.5*attract_force[0];
             msg.linear.y = 0.5*attract_force[1];
         }
@@ -233,21 +253,26 @@ void APFController::checkGoal(geometry_msgs::msg::Twist& msg, Eigen::Vector2d& a
     else {
         static int counter = 0;
         if(attract_force.norm() > 0.01 || abs(attract_force.norm()-grad_val) > 5e-4){
+            //minimum not reached yet
             grad_val = attract_force.norm();
             counter = 0;
-            if(obstacles.size() > 0 && attract_force.norm() < 0.15) {
+            //robot near minima (velocity override)
+            if(obstacles.size() > 0 && attract_force.norm() < 0.2) {
                 msg.linear.x = 0.5*attract_force[0];
                 msg.linear.y = 0.5*attract_force[1];
             }
         }
         else {
+            //minimum reached and wait time exceeded
             if(counter > 50 && !reached_goal) {
                 RCLCPP_INFO_STREAM(this->get_logger(), "Found source concentration maximum at: " << position);
+                RCLCPP_INFO(this->get_logger(), "Needed time: %.2f\n", (rclcpp::Clock().now()-start).seconds());
                 reached_goal = true;
             }
             counter++;
         }
     }
+    //turn heading to 0
     if(reached_goal) {
         msg.linear.x = 0.0;
         msg.linear.y = 0.0;

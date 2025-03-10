@@ -17,6 +17,8 @@ static inline int sign(double a) {
 }
 
 MapGenerator::MapGenerator() : Node("map_generator"), obstacles() {
+
+    //load parameter
     this->declare_parameter("map_dimension", 4.0);
     this->declare_parameter("min_obstacle_distance", 2.5);
     this->declare_parameter("goal_position", rclcpp::PARAMETER_DOUBLE_ARRAY);
@@ -35,7 +37,7 @@ MapGenerator::MapGenerator() : Node("map_generator"), obstacles() {
     this->declare_parameter("source_mesh", rclcpp::PARAMETER_STRING);
     this->get_parameter("source_mesh", mesh_file_name);
     
-
+    //initialize rclcpp objects
     obs_marker_publisher = this->create_publisher<visualization_msgs::msg::MarkerArray>("obstacle_vis", 1);
     obs_publisher = this->create_publisher<obstacle::msg::ObstacleArray>("obstacles", 10);
     robot_pos_publisher = this->create_publisher<geometry_msgs::msg::Pose>("initial_position", 10);
@@ -43,7 +45,7 @@ MapGenerator::MapGenerator() : Node("map_generator"), obstacles() {
     timer = this->create_wall_timer(5s, std::bind(&MapGenerator::timer_callback, this));
 
     Eigen::Vector2d robot_pos;
-
+    //generate T environment
     if(generate_T)  {
         double width_center, width_top, length;
         this->declare_parameter("width_T_center", 1.5);
@@ -66,9 +68,12 @@ MapGenerator::MapGenerator() : Node("map_generator"), obstacles() {
                     Eigen::Vector2d(-width_center/2.0, -width_top/2.0-length/2.0+width/2.0)));
         obstacles.push_back(Obstacle(width_center, width, obstacle::msg::Obstacle::RECTANGULAR,
                     Eigen::Vector2d(0.0, -width_top/2.0-length)));
+        
+        //generate initial robot position
         generateRandPos(robot_pos, Eigen::Vector2d(-0.15, 0.15), Eigen::Vector2d(-width_top/2.0, -width_top/2.0-length));
         RCLCPP_INFO(this->get_logger(), "Generated T environment with %.2f and %.2f floor widths\n", width_center, width_top);
     }
+    //generate random environment
     else {
 
         double obs_d;
@@ -78,7 +83,7 @@ MapGenerator::MapGenerator() : Node("map_generator"), obstacles() {
         this->get_parameter("obstacle_radius", obs_d);
         this->get_parameter("obstacle_number", obs_nbr);
 
-        //generate random environment
+        //generate random obstacle position
         for(int i = 0; i < obs_nbr; i++) {
 
             Eigen::Vector2d pos;
@@ -91,12 +96,14 @@ MapGenerator::MapGenerator() : Node("map_generator"), obstacles() {
             RCLCPP_INFO(this->get_logger(), "Obstacle position %i: %.2f, %.2f\n", i+1, pos[0], pos[1]);
         }
         
+        //generate random robot position
         Eigen::Vector2d range = Eigen::Vector2d(-map_dim, map_dim);
         generateRandPos(robot_pos, range, range);
         if(!checkDistance(robot_pos, goal))
             robot_pos += Eigen::Vector2d(sign(robot_pos[0])*map_dim/2.0, sign(robot_pos[1])*map_dim/2.0);
     }
 
+    //generate random heading
     double heading = generateRandNbr(Eigen::Vector2d(-M_PI, M_PI));
     tf2::Quaternion q;
     q.setRPY(0.0, 0.0, heading);

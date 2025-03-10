@@ -14,8 +14,8 @@ def generate_launch_description():
     rviz_path = os.path.join(pkg_share, 'rviz/config.rviz')
     use_sim_time = LaunchConfiguration('use_sim_time', default='false')
 
-    #model_path = os.path.join(pkg_share, 'models/robot_1.urdf')
-    model_path = os.path.join(pkg_share, 'models/robot_2.urdf')
+    model_path = os.path.join(pkg_share, 'models/robot_1.urdf')
+    #model_path = os.path.join(pkg_share, 'models/robot_2.urdf')
 
     model = ParameterValue(Command(['xacro ', model_path]),value_type=str)
     config = os.path.join(pkg_share, 'config', 'environment.yaml')
