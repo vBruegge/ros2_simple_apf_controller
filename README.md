@@ -179,7 +179,7 @@ The goal is reached by the controller, however since the reflecting force is non
 
 ![2b1](/img/2b-1.png)
 
-![2b2](/img/2b-2.png)
+![2b2](/img/2b2.png)
 
 ![2b3](/img/2b-3.png)
 
