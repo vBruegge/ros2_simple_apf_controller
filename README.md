@@ -53,13 +53,17 @@ The complete visuaization is done in rviz using marker and an `URDF`-file dor th
 - (source seeking) a mesh showing the distribution
 
 ![rviz_visualization](ros2_ws/img/visual.png)
+
 ![rviz_visualization_source](ros2_ws/img/visual2.png)
 
 ### Functionalities of the controller
 
 #### APF-principle
 For the APF, the robot is approximated as a point mass moveable in any direction. The movement is based on forces similar to an el. potential field. The goal acts as attracting force obstacles as reflecting, the addition of the two forces result in the vector of movement (vgl. figure).
-![apf](ros2_ws/img/apf.jpg) [Ref: https://doi.org/10.1016/j.jestch.2023.101343]
+
+![apf](ros2_ws/img/apf.jpg) 
+
+[Ref: https://doi.org/10.1016/j.jestch.2023.101343]
 
 Classic APF algorithms struggle by:
 - environments with local minima
@@ -71,10 +75,12 @@ The reflection force function per obstacle is prescribed by : f_Oi = 1/(dis^2)*n
 For solving the first issue a routine handling local minimas was programmed. It consists of 2 phases.
 **Phase 1: The robot drives straight into an obstacle**
 A vector perpendicular to the attracting vector is added to the combined (almost zero) vector.
+
 ![minima1](ros2_ws/img/minima1.png)
 
 **Phase 2: The robot is stuck between 2 obstacles**
 When a minima is detected, a timer starts running. after exceeding a defined space without movement, the controller expects to be stuck between 2 obstacles and the combined force is overriden using half of the attracting force.
+
 ![minima2](ros2_ws/img/minima2.png)
 
 #### Moving in confined spaces 
@@ -85,6 +91,7 @@ Since the programmed APF-controller acconts for all obstacles in the confined sp
 
 #### Heading control
 The heading is controlled using a comparison of an assymetric force computation. Additional to the force at the origin, the APF-force at the front (point A) is computed. The angle between these vectors (alpha) is used as angular velocity.
+
 ![heading_control](ros2_ws/img/heading.png)
 
 ### Configuration
@@ -128,9 +135,13 @@ The goal is reached by setting the goal to a desired position. The attracting fo
 
 ### Question 1a
 The robot reaches the origin ~6s after it received the first `Obstacle.msg`. Succesful examples are presented in the following.
+
 ![1a1](ros2_ws/img/1a-1.png)
+
 ![1a2](ros2_ws/img/1a-2.png)
+
 ![1a3](ros2_ws/img/1a-3.png)
+
 ![1a4](ros2_ws/img/1a-4.png)
 
 ### Question 1b
@@ -140,10 +151,13 @@ Possible solutions for this issue:
 - add an routine which checks if an obstacle is in front of the robot before overriding the force vector
 
 ![1b1](ros2_ws/img/t_fail1.png)
+
 ![1b2](ros2_ws/img/t_fail2.png)
+
 The Robot is touching is touching the wall, since the controller is right now not accounting for any dimension of the robot and assumes it as point.
 
 The mechanism controlling the heading works nonetheless.
+
 ![1a3](ros2_ws/img/t_3.png)
 
 ## Question 2
@@ -151,16 +165,24 @@ To adapt the code of Question 1, the attracting force is replaced by the gradien
 
 ### Question 2a
 The robot needs around 8 seconds to reach the source from any point.
+
 ![2a1](ros2_ws/img/2a-1.png)
+
 ![2a2](ros2_ws/img/2a-2.png)
+
 ![2a3](ros2_ws/img/2a-3.png)
+
 ![2a4](ros2_ws/img/2a-4.png)
 
 ### Question 2b
 The goal is reached by the controller, however since the reflecting force is non-zero it does not stop completely.
+
 ![2b1](ros2_ws/img/2b-1.png)
+
 ![2b2](ros2_ws/img/2b-2.png)
+
 ![2b3](ros2_ws/img/2b-3.png)
+
 ![2b4](ros2_ws/img/2b-4.png)
 
 Since the environment is generated randomly, it is possible, that the attraction force is to small and the robot gets stuck. This happens only rarely, when the minima routine cannot escape from the local minimum. The normal case is depicted in pic. 4.
@@ -170,4 +192,5 @@ Since the environment is generated randomly, it is possible, that the attraction
 ## Outlook
 
 The software is also capable handling complexer environments without further adaptions as shown below.
+
 ![outlook](ros2_ws/img/complex.png)
