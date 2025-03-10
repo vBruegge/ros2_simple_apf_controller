@@ -1,25 +1,25 @@
 /map_generator:
   ros__parameters:
-    map_dimension: 6.0
-    min_obstacle_distance: 2.1
+    map_dimension: 7.0
+    min_obstacle_distance: 2.2
     generate_T: false
     width_T_center: 1.5
     width_T_top: 1.25
     length_T: 5.0
-    obstacle_number: 4
+    obstacle_number: 6
     obstacle_diameter: 1.0
 
     
 /apf_controller:
   ros__parameters:
-    ignore_heading: false
+    ignore_heading: true
     max_vel: 5.0
     robot_length: 1.5
     sigma_source: 4.0
 
 /**:
    ros__parameters:
-      goal_position: [0.0, -0.0] #set source [0.84, -0.2] as goal to guarantee distance to obstacles
+      goal_position: [1.0, 0.5] #set source [0.84, -0.2] as goal to guarantee distance to obstacles
       seek_source: false
 
 

@@ -16,9 +16,27 @@ class OdometryManager : public rclcpp::Node
         OdometryManager();
 
     private:
+        /**
+         * @brief receives geometry_msgs::msg::Twist velocity
+         * 
+         * @param msg velocity msg
+         */
         void velocity_callback(const geometry_msgs::msg::Twist& msg);
+        /**
+         * @brief called once, saves starting position of robot
+         * 
+         * @param msg initial pose
+         */
         void initialization(const geometry_msgs::msg::Pose& msg);
+        /**
+         * @brief pose and transform computation by integrating the robot velocity
+         * 
+         */
         void odometry_loop();
+        /**
+         * @brief publishes LineStrip as Marker to show driven path
+         * 
+         */
         void publish_path();
 
         std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;

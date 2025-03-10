@@ -11,7 +11,8 @@ using namespace std::chrono_literals;
 #define LOOP_TIME 10ms
 
 OdometryManager::OdometryManager() : Node("odom_manager"), position(), heading(0.0), receivedPosition(false), vel() {
-    // Initialize the transform broadcaster
+
+    //initialize publisher/subscriber/timer
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     initial_pos_subscription = this->create_subscription<geometry_msgs::msg::Pose>("initial_position", 1,
             std::bind(&OdometryManager::initialization, this, std::placeholders::_1));
@@ -25,6 +26,7 @@ OdometryManager::OdometryManager() : Node("odom_manager"), position(), heading(0
     path_publisher = this->create_publisher<visualization_msgs::msg::Marker>("tracked_path", 1);
     path_timer = this->create_wall_timer(250ms, std::bind(&OdometryManager::publish_path, this));
 
+    //initialize path marker
     tracked_path.header.frame_id = "world";
     tracked_path.action = visualization_msgs::msg::Marker::ADD;
     tracked_path.type = visualization_msgs::msg::Marker::LINE_STRIP;
@@ -77,8 +79,11 @@ void OdometryManager::publish_path()  {
 }
 
 void OdometryManager::odometry_loop() {
+    //interrupt if no initial position was received
     if(!receivedPosition)
         return;
+
+    //pose integration
     const double time = (double)LOOP_TIME.count()/1000.0;
     position = position + time * vel;
     heading += ang_vel*time;
@@ -87,6 +92,7 @@ void OdometryManager::odometry_loop() {
     tf2::Quaternion q;
     q.setRPY(0.0, 0.0, heading);
     
+    //publish pose and transform
     geometry_msgs::msg::TransformStamped t;
 
     t.header.stamp =  rclcpp::Clock().now();
